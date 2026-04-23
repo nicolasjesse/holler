@@ -33,45 +33,32 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full pipeline, threading model, a
 hotkey press → mic → Groq Whisper → filler removal → LLM correction → text injection
 ```
 
-## Setup
-
-### 1. System dependencies
-
-**Pop!_OS 24.04 (COSMIC) or any Wayland compositor:**
+## Quick start
 
 ```bash
-sudo apt install libportaudio2 wl-clipboard
-# Plus dotool (preferred) — see https://sr.ht/~geb/dotool/
-# Add your user to the input group so evdev can read hotkeys on Wayland:
-sudo usermod -aG input $USER   # log out and back in after
+git clone https://github.com/nicolasjesse/holler
+cd holler
+make install          # handles system deps, venv, dotool, desktop entry, optional service
+make run              # or launch from your app menu
 ```
 
-**X11 (Debian/Ubuntu):**
+That's it. `make install` is interactive and will:
 
-```bash
-sudo apt install libportaudio2 xclip xdotool
-```
+1. Detect your distro (apt / dnf / pacman) and install system packages
+2. Build `dotool` from source if you're on Wayland and don't have it
+3. Add you to the `input` group (Wayland hotkeys)
+4. Create a venv and install Holler in editable mode
+5. Copy `config.example.json` → `config.json`
+6. Write a `.desktop` entry so Holler appears in your launcher
+7. Optionally install a `systemd --user` service so it auto-starts on login
 
-### 2. Python
+Flags: `./install.sh --yes` (non-interactive), `--no-service`, `--no-dotool`.
 
-```bash
-python3 -m venv .env
-source .env/bin/activate
-pip install -e .           # or: pip install -r requirements.txt
-```
+On first run without API keys, a settings dialog appears where you can paste your Groq key.
 
-For development:
+## Configuration reference
 
-```bash
-pip install -e ".[dev]"
-```
-
-### 3. Configuration
-
-```bash
-cp config.example.json config.json
-# edit config.json with your keys
-```
+Edit `config.json` (or use the settings dialog):
 
 | Property | Required | Description |
 |---|---|---|
@@ -89,15 +76,34 @@ cp config.example.json config.json
 
 ¹ Required only if `correction_provider` is `"openai"`. Set to `"groq"` to use a single API key for both transcription and correction.
 
-### 4. Run
+## Manual setup (power users)
+
+<details>
+<summary>Skip <code>make install</code> and do it yourself</summary>
+
+**System packages:**
 
 ```bash
-python run.py
-# or, after pip install -e .
-holler
+# Wayland (Pop!_OS / GNOME / KDE / Sway / Hyprland)
+sudo apt install libportaudio2 wl-clipboard
+# Plus dotool — see https://sr.ht/~geb/dotool/
+sudo usermod -aG input $USER   # log out and back in
+
+# X11
+sudo apt install libportaudio2 xclip xdotool
 ```
 
-On first launch without a `config.json`, a settings dialog appears where you can paste your API key and pick a microphone.
+**Python:**
+
+```bash
+python3 -m venv .env
+source .env/bin/activate
+pip install -e .            # or ".[dev]" for ruff/pytest
+cp config.example.json config.json
+python run.py               # or: holler
+```
+
+</details>
 
 ## COSMIC-specific notes
 
@@ -126,17 +132,26 @@ Running cost is negligible — daily use over a month stays **well under $1**:
 ## Development
 
 ```bash
-pip install -e ".[dev]"
-
-# Lint + format
-ruff check .
-ruff format .
-
-# Tests (coming in PR 3)
-pytest
+make dev         # install ruff + pytest into the venv
+make lint        # ruff check + format check
+make fix         # auto-apply safe ruff fixes + reformat
+make test        # pytest (skips gracefully until tests/ exists)
+make run         # run Holler in the foreground
+make clean       # remove venv + caches
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for extension points.
+Run `make` with no arguments for the full list of targets.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the module layout and extension points.
+
+## Uninstall
+
+```bash
+make uninstall          # removes venv, service, desktop entry
+./uninstall.sh --purge  # also deletes config.json (erases API keys)
+```
+
+System packages (`libportaudio2`, `wl-clipboard`, `dotool`) and group memberships (`input`, `uinput`) are left alone — remove manually if you want a full cleanup.
 
 ## License
 
